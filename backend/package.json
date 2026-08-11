@@ -1,0 +1,25 @@
+{
+  "name": "health-monitor-backend",
+  "version": "1.1.1",
+  "description": "Release Health Monitor - Backend API with Sentry Integration",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "release": "node scripts/release.js"
+  },
+  "dependencies": {
+    "@sentry/node": "^8.0.0",
+    "@sentry/profiling-node": "^8.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@sentry/cli": "^2.32.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
