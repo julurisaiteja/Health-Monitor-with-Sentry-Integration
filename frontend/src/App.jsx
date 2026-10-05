@@ -7,6 +7,54 @@ import ErrorButtons from './components/ErrorButtons.jsx';
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
 const API_URL = '/api/items';
+const DEMO_STORAGE_KEY = 'release-health-monitor-demo-notes-v1';
+const DEMO_MODE = typeof window !== 'undefined' && (
+  window.location.hostname.endsWith('.workers.dev') ||
+  window.location.hostname.endsWith('.pages.dev')
+);
+const SAMPLE_NOTES = [
+  {
+    id: 'sample-101',
+    title: 'Investigate elevated checkout latency',
+    content: 'Review the p95 response-time increase from the latest release and confirm the payment dependency health.',
+    priority: 'high',
+    completed: false,
+    updatedAt: '2026-10-05T09:40:00.000Z',
+  },
+  {
+    id: 'sample-102',
+    title: 'Verify Sentry release markers',
+    content: 'Check release association and source-map coverage for the current frontend build.',
+    priority: 'medium',
+    completed: false,
+    updatedAt: '2026-10-04T16:15:00.000Z',
+  },
+  {
+    id: 'sample-103',
+    title: 'Review alert routing rules',
+    content: 'Confirm the on-call channel receives critical error and latency alerts.',
+    priority: 'low',
+    completed: true,
+    updatedAt: '2026-10-03T11:20:00.000Z',
+  },
+];
+
+function loadDemoNotes() {
+  try {
+    const stored = window.localStorage.getItem(DEMO_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : SAMPLE_NOTES;
+  } catch {
+    return SAMPLE_NOTES;
+  }
+}
+
+function saveDemoNotes(notes) {
+  try {
+    window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(notes));
+  } catch {
+    // Keep the current preview session usable when storage is unavailable.
+  }
+}
 
 // ─── Sentry Error Boundary Fallback ──────────────────────────────────────────
 function ErrorFallback({ error, componentStack, resetError }) {
@@ -46,6 +94,13 @@ function AppContent() {
 
   // ─── Fetch All Items ────────────────────────────────────────────────────────
   const fetchItems = useCallback(async () => {
+    if (DEMO_MODE) {
+      setItems(loadDemoNotes());
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -69,6 +124,15 @@ function AppContent() {
 
   // ─── Create Item ────────────────────────────────────────────────────────────
   const handleCreate = async (formData) => {
+    if (DEMO_MODE) {
+      const nextItems = [{ ...formData, id: `sample-${Date.now()}`, updatedAt: new Date().toISOString() }, ...items];
+      setItems(nextItems);
+      saveDemoNotes(nextItems);
+      setShowForm(false);
+      showNotification('Sample note saved in this browser.');
+      return;
+    }
+
     try {
       const response = await axios.post(API_URL, formData);
       setItems((prev) => [...prev, response.data.data]);
@@ -83,6 +147,18 @@ function AppContent() {
 
   // ─── Update Item ────────────────────────────────────────────────────────────
   const handleUpdate = async (id, formData) => {
+    if (DEMO_MODE) {
+      const nextItems = items.map((item) => item.id === id
+        ? { ...item, ...formData, updatedAt: new Date().toISOString() }
+        : item);
+      setItems(nextItems);
+      saveDemoNotes(nextItems);
+      setEditingItem(null);
+      setShowForm(false);
+      showNotification('Sample note updated in this browser.');
+      return;
+    }
+
     try {
       const response = await axios.put(`${API_URL}/${id}`, formData);
       setItems((prev) =>
@@ -100,6 +176,14 @@ function AppContent() {
 
   // ─── Delete Item ────────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
+    if (DEMO_MODE) {
+      const nextItems = items.filter((item) => item.id !== id);
+      setItems(nextItems);
+      saveDemoNotes(nextItems);
+      showNotification('Sample note deleted from this browser.');
+      return;
+    }
+
     try {
       await axios.delete(`${API_URL}/${id}`);
       setItems((prev) => prev.filter((item) => item.id !== id));
@@ -177,6 +261,12 @@ function AppContent() {
       )}
 
       <main className="main">
+        {DEMO_MODE && (
+          <div className="demo-notice" role="status">
+            <strong>Demo mode</strong>
+            <span>Sample notes are editable and saved only in this browser. Sentry test events are simulated locally.</span>
+          </div>
+        )}
         {/* ── Stats Bar ── */}
         <div className="stats-grid">
           <div className="stat-card stat-total">

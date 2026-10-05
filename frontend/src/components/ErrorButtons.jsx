@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
 
+const DEMO_MODE = typeof window !== 'undefined' && (
+  window.location.hostname.endsWith('.workers.dev') ||
+  window.location.hostname.endsWith('.pages.dev')
+);
+
 // ─── ErrorButtons Component ───────────────────────────────────────────────────
 // This component provides buttons to simulate errors for Sentry testing.
 // Each button corresponds to a specific release version's error scenario.
@@ -24,6 +29,11 @@ export default function ErrorButtons({ showNotification }) {
   // This throws a raw Error that is NOT caught → Sentry captures automatically
   // ──────────────────────────────────────────────────────────────────────────
   const triggerUnhandledFrontendException = () => {
+    if (DEMO_MODE) {
+      addLog('[DEMO] Simulated an unhandled frontend exception locally; no Sentry event was sent.', 'warning');
+      showNotification('Demo exception simulated locally. Nothing was sent to Sentry.', 'warning');
+      return;
+    }
     addLog('[v1.0.0] Triggering unhandled frontend exception...', 'warning');
     showNotification('🚨 Triggering unhandled exception! Check Sentry.', 'error');
     // Intentional: this error is NOT caught, Sentry captures it automatically
@@ -37,6 +47,11 @@ export default function ErrorButtons({ showNotification }) {
   // Calls the backend endpoint that triggers Promise.reject()
   // ──────────────────────────────────────────────────────────────────────────
   const triggerBackendAsyncRejection = async () => {
+    if (DEMO_MODE) {
+      addLog('[DEMO] Simulated a backend async rejection; no API call was made.', 'warning');
+      showNotification('Demo backend rejection simulated locally.', 'warning');
+      return;
+    }
     addLog('[v1.0.0] Triggering backend async rejection...', 'warning');
     try {
       const res = await axios.get('/api/debug/async-error');
@@ -53,6 +68,11 @@ export default function ErrorButtons({ showNotification }) {
   // This is caught in try/catch and reported manually — "handled error"
   // ──────────────────────────────────────────────────────────────────────────
   const triggerHandledError = () => {
+    if (DEMO_MODE) {
+      addLog('[DEMO] Simulated a handled exception; no Sentry event was sent.', 'info');
+      showNotification('Demo handled error simulated locally.', 'info');
+      return;
+    }
     addLog('[v1.1.0] Triggering handled error with captureException...', 'info');
     try {
       // Intentional: simulate a logic error
@@ -98,6 +118,13 @@ export default function ErrorButtons({ showNotification }) {
   // ALERT TRIGGER: Trigger many errors rapidly to fire the Sentry alert rule
   // ──────────────────────────────────────────────────────────────────────────
   const triggerAlertFlood = async () => {
+    if (DEMO_MODE) {
+      for (let i = 1; i <= 7; i += 1) {
+        addLog(`[DEMO] Simulated alert threshold event ${i} of 7.`, 'warning');
+      }
+      showNotification('Seven sample events simulated locally; nothing was sent to Sentry.', 'warning');
+      return;
+    }
     addLog('[ALERT] Flooding errors to trigger alert rule (>5 errors)...', 'warning');
     showNotification('⚡ Sending 6+ errors to trigger alert rule...', 'warning');
 
@@ -144,7 +171,9 @@ export default function ErrorButtons({ showNotification }) {
       <div className="testing-header">
         <h2>🔬 Sentry Error Testing Console</h2>
         <p className="testing-subtitle">
-          Use these buttons to simulate errors and verify Sentry integration across releases.
+          {DEMO_MODE
+            ? 'Preview controls simulate release events locally; they do not send data to Sentry.'
+            : 'Use these buttons to simulate errors and verify Sentry integration across releases.'}
         </p>
       </div>
 
